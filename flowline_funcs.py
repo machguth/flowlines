@@ -13,7 +13,11 @@ from shapely.geometry import Point, LineString, Polygon
 
 
 # #####################################################################################################################
-def create_polygons(df_fl, CRS, buff, outfolder):  # create the polygons
+def create_polygons(df_fl, CRS, buff, outfolder, flminlength):  # create the polygons
+
+    # check minimum length is at least set to 2, otherwise LineString will issue errors
+    if flminlength == 1:
+        flminlength = 2
 
     # convert to LineString
     flid = np.unique(df_fl['ID'])
@@ -26,9 +30,10 @@ def create_polygons(df_fl, CRS, buff, outfolder):  # create the polygons
     for f in flid:
         flt = df_fl.loc[df_fl['ID'] == f]
         geo = [xy for xy in zip(flt.X, flt.Y)]
-        s = LineString(geo)
-        final = s.buffer(buff, join_style=2)
-        final_gdf.loc[f, 'geometry'] = final
+        if len(geo) > flminlength:  # minimum lentgh of a flowline
+            s = LineString(geo)
+            final = s.buffer(buff, join_style=2)
+            final_gdf.loc[f, 'geometry'] = final
 
     # write output
     final_gdf.to_file(outfolder + 'testpoly3.shp')
@@ -55,10 +60,13 @@ def flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder):  # create ma
     bbox = ((np.min(x_coords), np.max(x_coords), np.min(y_coords), np.max(y_coords)))
 
     # set the range of velocity values
-    norm = plt.Normalize(df_fl['v'].min(), df_fl['v'].max())
+    vmax = df_fl['v'].max()
+    if vmax > 400:
+        vmax = 400
+    norm = plt.Normalize(df_fl['v'].min(), vmax)
 
     # create the map
-    fig, ax = plt.subplots(figsize=(9, 12))   #
+    fig, ax = plt.subplots(figsize=(18, 24))   #
     ax.set_xlabel('easting (' + CRS + ')')
     ax.set_ylabel('northing (' + CRS + ')')
     plt.title('Flowlines Test')

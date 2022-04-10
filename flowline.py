@@ -10,7 +10,6 @@ import pandas as pd
 import rasterio
 import platform
 import geopandas as gpd
-from shapely.ops import unary_union
 
 import flowline_funcs as flf
 
@@ -21,19 +20,21 @@ if osys != 'Windows':
     infolder = '/home/horstm/erc/vel_greenland_crop/'
     outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
-    infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
-    infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
-    demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
-    #infilex = r'C:/horst/modeling/modelinput/testsites/greenland_vel_mosaic200_2015-2018_vx_v01-composite-crop.tif'
-    #infiley = r'C:/horst/modeling/modelinput/testsites/greenland_vel_mosaic200_2015-2018_vy_v01-composite-crop.tif'
-    #demmask = r'C:/horst/modeling/modelinput/testsites/dem_test.tif'
+    # infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
+    # infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
+    # demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
+    infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
+    infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
+    demmask = r'N:/MODIS/ArcticDEM_500m/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr.tif'
     seedfile = r'N:/MODIS/gis/seedpoints15000test.shp'  # needs to be a point shapefile
-    outfolder = r'N:/MODIS/gis/'
-    #outfolder = r'C:/horst/modeling/modelinput/'
 
-vmin = 5  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
-buff = 10000  # [m] buffer distance by which the flowlines get buffered
+    outfolder = r'N:/MODIS/polygons/'
 
+vmin = 3  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
+buff = 10000  # [m] buffer distance by which the flowlines get buffered (to create polygons from the flow lines)
+flminlength = 30 # minimum required points in a flowline
+
+# whenever a seedfile is specified, seedpoints are read from the seedfile
 # if seedfile is not specified, then seed points get created along a vertical line as defined below
 seedXcoord = -5000  # in coordinates of CRS
 seedspacing = 5000
@@ -47,13 +48,14 @@ if not isdir:
 # ------------------------seed points: read from seed file or create ------------------------------------------
 if 'seedfile' in locals():
     seed = gpd.read_file(seedfile)
-
     # create the seedpoints
     seedpoints = []
-
-
     for index, row in seed.iterrows():
         seedpoints.extend(np.asarray(seed['geometry'].iloc[index]).tolist())
+
+    # append the future flowline IDs
+    for ni, i in enumerate(seedpoints):
+        i.append(ni)
 
 else:  # do not create seedpoints from seedfile but create points along a vertical line
     ycoords = np.arange(-2740000, -2320000, seedspacing)
@@ -214,10 +216,10 @@ for p in seedpoints:
 
         if hd == 0:
             print('!!! hd = 0')
-            exit()
+            break
         if vd == 0:
             print('!!! vd = 0')
-            exit()
+            break
 
         # move information of current grid cell to second rows of x, y and m arrays
         x[1], y[1], m[1, :] = x[i], y[i], m[i, :]
@@ -281,7 +283,7 @@ for p in seedpoints:
     df_fl = pd.concat([pd.DataFrame(np.asarray(flowline), columns=df_fl.columns), df_fl], ignore_index=True)
 
 # create the polygons
-flf.create_polygons(df_fl, CRS, buff, outfolder)
+flf.create_polygons(df_fl, CRS, buff, outfolder, flminlength)
 
 # create map with the flowlines
 flf.flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder)

@@ -19,8 +19,10 @@ if osys != 'Windows':
     infolder = '/home/horstm/erc/vel_greenland_crop/'
     outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
-    infolder = r'N:/MODIS/vel_greenland_crop2/'
-    outfolder = r'N:/MODIS/vel_greenland_crop_processed_test2/'
+    #infolder = r'N:/MODIS/vel_greenland_crop2/'
+    infolder = r'N:/MODIS/vel_greenland_raw/'
+    #outfolder = r'N:/MODIS/vel_greenland_crop_processed_test2/'
+    outfolder = r'N:/MODIS/vel_greenland_processed/'
 
 filetype = '.tif'
 

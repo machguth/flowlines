@@ -2,6 +2,8 @@
 
 """
 calculate flowlines on an ice sheet, based on maps of the flowfield in x and y direction
+This piece of code reads a line shapefile and creates seedpoints from the lines. Along
+all lines points are created at given intervals.
 """
 
 import os
@@ -25,7 +27,7 @@ else:
     seedfile = r'N:/MODIS/gis/Greenland2400mContours.shp'  # needs to be a line shapefile, can contain many lines
     outfolder = r'N:/MODIS/gis/'
 
-distance_delta = 5000  # distance of seedpoints located along seedfile polylines
+distance_delta = 15000  # distance of seedpoints located along seedfile polylines
 
 # -------------------------------------------------------------------------------------------------
 # check if output folder exists, if no create

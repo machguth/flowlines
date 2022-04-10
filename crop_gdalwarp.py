@@ -13,7 +13,8 @@ import platform
 osys = platform.system()
 print('operating system is %s' %osys)
 
-resampling = 'near'
+#resampling = 'near'
+resampling = 'cubic'
 
 # xmax = -104000  # 5000
 # xmin = -456000  # -278000
@@ -27,10 +28,14 @@ resampling = 'near'
 # xmin = 145000  #
 # ymin = -1341000  #
 # ymax = -1017000  #
-xmax = 3000  #
-xmin = -318000  #
-ymin = -2741000  #
-ymax = -2320000  #
+# xmax = 3000  #
+# xmin = -318000  #
+# ymin = -2741000  #
+# ymax = -2320000  #
+xmax = 665000  #
+xmin = -601500  #
+ymin = -3256000  #
+ymax = -826000  #
 
 s_srs = 'EPSG:3413'  # source projection
 t_srs = 'EPSG:3413'  # target projection
@@ -43,7 +48,9 @@ if osys != 'Windows':
     # ingrid = '/home/horstm/erc/vel_greenland_raw/'
     ingrid = '/home/horstm/ownCloud/GIS/dem_data/dem_arctic/arcticdem_mosaic_100m_v30_greenland_icesheet_geoidCorr.tif'
 else:
-    ingrid = r'N:/MODIS/vel_greenland_raw/'
+    #ingrid = r'N:/MODIS/vel_greenland_raw/'
+    #ingrid = r'N:/MODIS/vel_greenland_processed/'
+    ingrid = r'N:/MODIS/ArcticDEM_100m/arcticdem_mosaic_100m_v30_greenland_icesheet_geoidCorr.tif'
     # ingrid = r'C:/Users/machguth/switchdrive/GIS/dem_data/dem_arctic/arcticdem_mosaic_100m_v30_greenland_icesheet_geoidCorr.tif'
     #ingrid = r'N:/MODIS/ArcticDEM_100m/arcticdem_mosaic_100m_v30_greenland_icesheet_geoidCorr.tif'
 
@@ -54,7 +61,8 @@ if osys != 'Windows':
     # outgrid = '/home/horstm/erc/vel_greenland_crop/'
     outgrid = '/home/horstm/erc/mask_greenland_icesheet/dem_southwest_test.tif'
 else:
-    outgrid = r'N:/MODIS/vel_greenland_crop2/'
+    #outgrid = r'N:/MODIS/vel_greenland_500m/'
+    outgrid = r'N:/MODIS/ArcticDEM_500m/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr.tif'
     # outgrid = r'E:/MODIS/mask_greenland_icesheet/dem_northwest.tif'
     #outgrid = r'N:/MODIS/mask_greenland_icesheet/dem_NE.tif'
     # outgrid = r'E:/MODIS/mask_greenland_icesheet/test.tif'
