@@ -27,16 +27,16 @@ else:
     #infilex = r'C:/horst/modeling/modelinput/testsites/greenland_vel_mosaic200_2015-2018_vx_v01-composite-crop.tif'
     #infiley = r'C:/horst/modeling/modelinput/testsites/greenland_vel_mosaic200_2015-2018_vy_v01-composite-crop.tif'
     #demmask = r'C:/horst/modeling/modelinput/testsites/dem_test.tif'
-    seedfile = r'N:/MODIS/gis/dem_greenland_200m_contours.shp'  # needs to be a line shapefile, can contain many lines
+    seedfile = r'N:/MODIS/gis/seedpoints15000test.shp'  # needs to be a point shapefile
     outfolder = r'N:/MODIS/gis/'
     #outfolder = r'C:/horst/modeling/modelinput/'
 
 vmin = 5  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
 buff = 10000  # [m] buffer distance by which the flowlines get buffered
-seedtype = 'other'  # if set to 'FromLine' then the seedpoints are calculated from seedfile, else along seedXcoord
+
+# if seedfile is not specified, then seed points get created along a vertical line as defined below
 seedXcoord = -5000  # in coordinates of CRS
 seedspacing = 5000
-distance_delta = 15000  # distance of seedpoints located along seedfile polylines
 
 # -------------------------------------------------------------------------------------------------
 # check if output folder exists, if no create
@@ -44,35 +44,17 @@ isdir = os.path.isdir(outfolder)
 if not isdir:
     os.mkdir(outfolder)
 
-# ------------------------------------ read seedfile data ------------------------------------------
-if seedtype == 'FromLine':
-    cont = gpd.read_file(seedfile)
-    cont_sel = cont.loc[cont['ELEV'] == 2400]  # select contour linesyb elevation. Given contourline needs to exist.
-    cont_sel['length'] = cont_sel['geometry'].length  # length of the contour lines
-    seedlines = cont_sel.loc[cont_sel['length'] > 21000]  # remove very short contour lines
-    seedlines['geometry'] = seedlines['geometry'].simplify(10000)  # vers strongly simplyfy the lines
+# ------------------------seed points: read from seed file or create ------------------------------------------
+if 'seedfile' in locals():
+    seed = gpd.read_file(seedfile)
 
     # create the seedpoints
     seedpoints = []
 
-    # demDR = rasterio.open(demmask)  # read the ice sheet dem and create mask
-    # demDRnd = demDR.nodatavals  # get nodata value
-    # CRS = demDR.crs.data['init']
-    # final_gdf = gpd.GeoDataFrame()
-    # final_gdf['geometry'] = None
-    # # Set the GeoDataFrame's coordinate system according to the DEM
-    # final_gdf.crs = CRS
 
-    for index, row in seedlines.iterrows():
-        distances = np.arange(0, row['geometry'].length, distance_delta)
-        points = [row['geometry'].interpolate(distance) for distance in distances] + [row['geometry'].boundary[1]]
-        multipoint = unary_union(points)  # or new_line = LineString(points)
-        seedpoints.extend(np.asarray(multipoint).tolist())
+    for index, row in seed.iterrows():
+        seedpoints.extend(np.asarray(seed['geometry'].iloc[index]).tolist())
 
-    #     final_gdf.loc[index, 'geometry'] = multipoint
-    #
-    # # write output
-    # final_gdf.to_file(outfolder + 'seedpoints.shp')
 else:  # do not create seedpoints from seedfile but create points along a vertical line
     ycoords = np.arange(-2740000, -2320000, seedspacing)
     seedpoints = []

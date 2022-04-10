@@ -24,7 +24,6 @@ else:
     demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
     seedfile = r'N:/MODIS/gis/Greenland2400mContours.shp'  # needs to be a line shapefile, can contain many lines
     outfolder = r'N:/MODIS/gis/'
-    #outfolder = r'C:/horst/modeling/modelinput/'
 
 distance_delta = 5000  # distance of seedpoints located along seedfile polylines
 
