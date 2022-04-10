@@ -1,0 +1,426 @@
+#! /usr/bin/env python
+
+"""
+calculate flowlines on an ice sheet, based on maps of the flowfield in x and y direction
+"""
+
+import os
+import numpy as np
+import pandas as pd
+import rasterio
+import platform
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import geopandas as gpd
+from shapely.geometry import Point, LineString, Polygon
+from shapely.ops import unary_union
+
+osys = platform.system()
+print('operating system is %s' %osys)
+
+if osys != 'Windows':
+    infolder = '/home/horstm/erc/vel_greenland_crop/'
+    outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
+else:
+    infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
+    infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
+    demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
+    #infilex = r'C:/horst/modeling/modelinput/testsites/greenland_vel_mosaic200_2015-2018_vx_v01-composite-crop.tif'
+    #infiley = r'C:/horst/modeling/modelinput/testsites/greenland_vel_mosaic200_2015-2018_vy_v01-composite-crop.tif'
+    #demmask = r'C:/horst/modeling/modelinput/testsites/dem_test.tif'
+    seedfile = r'N:/MODIS/gis/dem_greenland_200m_contours.shp'  # needs to be a line shapefile, can contain many lines
+    outfolder = r'N:/MODIS/gis/'
+    #outfolder = r'C:/horst/modeling/modelinput/'
+
+vmin = 5  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
+buff = 10000  # [m] buffer distance by which the flowlines get buffered
+seedtype = 'other' # if set to 'FromLine' then the seedpoints are calculated from seedfile, else along seedXcoord
+seedXcoord = -5000  # in coordinates of CRS
+seedspacing = 5000
+distance_delta = 15000  # distance of seedpoints located along seedfile polylines
+
+# -------------------------------------------------------------------------------------------------
+# check if output folder exists, if no create
+isdir = os.path.isdir(outfolder)
+if not isdir:
+    os.mkdir(outfolder)
+
+# ------------------------------------ read seedfile data ------------------------------------------
+if seedtype == 'FromLine':
+    cont = gpd.read_file(seedfile)
+    cont_sel = cont.loc[cont['ELEV'] == 2400]  # select contour linesyb elevation. Given contourline needs to exist.
+    cont_sel['length'] = cont_sel['geometry'].length  # length of the contour lines
+    seedlines = cont_sel.loc[cont_sel['length'] > 21000]  # remove very short contour lines
+    seedlines['geometry'] = seedlines['geometry'].simplify(10000)  # vers strongly simplyfy the lines
+
+    # create the seedpoints
+    seedpoints = []
+
+    # demDR = rasterio.open(demmask)  # read the ice sheet dem and create mask
+    # demDRnd = demDR.nodatavals  # get nodata value
+    # CRS = demDR.crs.data['init']
+    # final_gdf = gpd.GeoDataFrame()
+    # final_gdf['geometry'] = None
+    # # Set the GeoDataFrame's coordinate system according to the DEM
+    # final_gdf.crs = CRS
+
+    for index, row in seedlines.iterrows():
+        distances = np.arange(0, row['geometry'].length, distance_delta)
+        points = [row['geometry'].interpolate(distance) for distance in distances] + [row['geometry'].boundary[1]]
+        multipoint = unary_union(points)  # or new_line = LineString(points)
+        seedpoints.extend(np.asarray(multipoint).tolist())
+
+    #     final_gdf.loc[index, 'geometry'] = multipoint
+    #
+    # # write output
+    # final_gdf.to_file(outfolder + 'seedpoints.shp')
+else:  # do not create seedpoints from seedfile but create points along a vertical line
+    ycoords = np.arange(-2740000, -2320000, seedspacing)
+    seedpoints = []
+    for ni, i in enumerate(ycoords):
+        seedpoints.append([seedXcoord, i, ni])
+
+# ------------------------------------ analyse/preparing the DEM data -----------------------------------------
+demDR = rasterio.open(demmask)  # read the ice sheet dem and create mask
+demDRnd = demDR.nodatavals  # get nodata value
+CRS = demDR.crs.data['init']
+
+# extract coordinates
+x_coords = np.arange((demDR.get_transform())[0], (demDR.get_transform())[1] * demDR.shape[1] +
+                     (demDR.get_transform())[0], (demDR.get_transform())[1]) - (demDR.get_transform())[5] / 2
+y_coords = np.arange((demDR.get_transform())[3], (demDR.get_transform())[5] * demDR.shape[0] +
+                     (demDR.get_transform())[3], (demDR.get_transform())[5]) + (demDR.get_transform())[5] / 2
+
+coord_mm = [np.min(x_coords), np.max(x_coords), np.min(y_coords), np.max(y_coords)]
+
+dem = demDR.read(1)  # read values
+dem = np.where(dem == demDR.nodatavals, np.NaN, dem)
+
+cs = (demDR.get_transform())[1]
+
+# read x and y velocity values
+xvaDR = rasterio.open(infilex)
+yvaDR = rasterio.open(infiley)
+xva = xvaDR.read(1)
+yva = yvaDR.read(1)
+
+if (xvaDR.get_transform())[0] != (demDR.get_transform())[0] or \
+        (xvaDR.get_transform())[3] != (demDR.get_transform())[3]:
+    print('')
+    print('! Coordinate references of DEM mask and velocity field not identical. !')
+    print('! Either x or y reference differ (upper/left vs. lower/right margin). !')
+    print('xvaDR.get_transform():', xvaDR.get_transform())
+    print('demDR.get_transform():', demDR.get_transform())
+    quit()
+
+# mask veloctiy fields to ice sheet extent
+xva = np.where(np.isnan(dem), np.NaN, xva)
+yva = np.where(np.isnan(dem), np.NaN, yva)
+
+# Initiate DataFrame to store data on all flowlines
+df_fl = pd.DataFrame(columns=['ID', 'n', 'X', 'Y', 'Z', 'v', 'd'])
+
+# ***************************************** calculate the flowlines *******************************************
+
+for p in seedpoints:
+
+    print('starting with seedpoint: ', p)
+
+    fl_id = p[2] # get ID of the flowline
+
+    # ----------------------------- preparations --------------------------
+    # initialize flowline and starting point
+    flowline = []
+
+    # initialize conflict tracking
+    conflict = [False, 0]  # 1st element indicates if conflict (True = conflict), 2nd count of consecutive conflicts
+    max_conflict = 3  # maximum count of consecutive conflicts. If exceeded then flowline is ended
+
+    # initialize arrays of array-coordinates
+    # Calculation of the flowline from one point of the flowline (not identical to grid cell coordinates) to the next
+    # basically requires only information on one grid cell. However, there are cases of conflict, when the flowline
+    # leaves grid cell 'n' (old) into direction fo grid cell 'n + 1' (new) but flowdirection of grid cell 'n + 1'
+    # immediately tries to send back the flowline into grid cell 'n'. In this case the average flowdirection between
+    # two grid cells needs to be calculated.
+    x, y = [np.nan, np.nan], [np.nan, np.nan]
+
+    # initialize array of the margin of the grid cells. As above, basically only the margins of one grid cell are needed
+    # but in case of conflict the margins of the two conflicting grid cess are needed.
+    m = np.empty((2,4))
+    m[:] = np.nan
+
+    # Boolean variable: as long as True the flowline continues
+    # Gets set to True if seedpoint passes initial check
+    c = False
+
+    # the algorithm keeps track of two grid cells, the one one that is currently being crossed (= new cell)
+    # and the one that has just been crossed (=old cell). Their indices in a two element array are 0 (=new) and 1 (=old)
+    # Typically the old grid cell is of no relevance, unless there is a conflict between flow directions between old
+    # and the new cell. In that case it is possible that the line never enters the new cell but gets immediately
+    # redirected into the old cell. Only in that case the old cell is used twice in a row.
+    i = 0  # Start with 0.
+
+    # ----------------------------- computation of flowlines ------------------------------
+    # Check if there actually is a cell, if there are data and if velocity high enough
+
+    x[0], y[0] = int(np.floor(p[0] - coord_mm[0]) / cs), \
+                 int(np.floor(coord_mm[3] - p[1]) / cs)  # array coords. initial cell
+
+    if 0 <= x[0] < dem.shape[1] and 0 <= y[0] < dem.shape[0]:
+        if np.isfinite(dem[y[0], x[0]]):
+            v = np.sqrt(xva[y[0], x[0]]**2 + yva[y[0], x[0]]**2)
+            if v > vmin:
+                c = True
+    #         else:
+    #             print('flowline not started: too slow')
+    #     else:
+    #         print('flowline not startet: NaN (outside of ice sheet')
+    # else:
+    #     print('flowline not started: outside of domain')
+
+    flowline.append([fl_id, 0, p[0], p[1], dem[y[0], x[0]], v, 0]) # information for initial point
+    #flowline = pd.concat([pd.DataFrame([[fl_id, p[0], p[1], dem[y[0], x[0]], v,  0]],
+    #                                   columns=flowline.columns), flowline], ignore_index=True)
+
+    #print(dem[y[0], x[0]], v)
+    #print('')
+
+    # ****************** main loop ***********************
+    while c:
+
+        # define margins of current cells
+        m[0, :] = [x[0] * cs + coord_mm[0], (x[0] + 1) * cs + coord_mm[0],
+                   coord_mm[3] - y[0] * cs, coord_mm[3] - (y[0] + 1) * cs]
+        m[1, :] = [x[1] * cs + coord_mm[0], (x[1] + 1) * cs + coord_mm[0],
+                   coord_mm[3] - y[1] * cs, coord_mm[3] - (y[1] + 1) * cs]
+
+        # *** conflict solving ***
+        # If conflict, then analyse whether the old or new cell have stronger flow (in x or y direction,
+        # depending on which border the flowline is about to cross). If, for example, the new cell has stronger flow
+        # (np.abs(yva[y[0], x[0]]) > np.abs(yva[y[1], x[1]]) or np.abs(xva[y[0], x[0]]) > np.abs(xva[y[1], x[1]]))
+        # then the flowline gets pushed back into the old cell. Flowdirection and strength of the old cell, however,
+        # cannot be used in this case because this would again send the flowline into the new cell. The conflict
+        # is solved by using the average x and y flow directions of old and new cell.
+        if conflict[0]:
+            if x[0] == x[1]:  # means there is a conflict between two grid cells with differing y coords
+                # which of the two conflicting cells has stronger flow in y direction?
+                if np.abs(yva[y[0], x[0]]) > np.abs(yva[y[1], x[1]]):
+                    i = 1  # flowline will move through second (=old) cell in array of current cells
+                else:
+                    i = 0  # flowline will move through first (=new) cell in array of current cells
+            else:  # means there is a conflict between two grid cells with differing x coords
+                # which of the two conflicting cells has stronger flow in x direction?
+                if np.abs(xva[y[0], x[0]]) > np.abs(xva[y[1], x[1]]):
+                    i = 1  # flowline will move through second (=old) cell in array of current cells
+                else:
+                    i = 0  # flowline will move through first (=new) cell in array of current cells
+            # If there is a conflict, regardless of in x or y direction, average x and y flow directions are used
+            xv, yv = np.mean([xva[y[0], x[0]], xva[y[1], x[1]]]), np.mean([yva[y[0], x[0]], yva[y[1], x[1]]])
+        else:
+            i = 0
+            xv, yv = xva[y[0], x[0]], yva[y[0], x[0]]
+
+        # calculate where the flowline leaves the current cell
+        s = yv / xv  # slope of flow direction
+
+        # distances to cell margins: d = x or y distance, l = absolute length, h = horizontal, v = vertical,
+        # i = intercept
+        if xv < 0:  # m[i, 0] relevant, heading towards the more negative (western) margin
+            hd = m[i, 0] - p[0]
+            yih = hd * s
+            lh = np.sqrt(yih**2 + hd**2)
+        else:  # m[i, 1] relevant, heading towards the less negative (eastern) margin
+            hd = m[i, 1] - p[0]
+            yih = hd * s
+            lh = np.sqrt(yih**2 + hd**2)
+        if yv < 0:  # m[i, 3] relevant, heading towards the more negative (southern) margin
+            vd = m[i, 3] - p[1]
+            xiv = vd / s
+            lv = np.sqrt(xiv**2 + vd**2)
+        else:  # m[i, 2] relevant, heading towards the less negative (northern) margin
+            vd = m[i, 2] - p[1]
+            xiv = vd / s
+            lv = np.sqrt(xiv**2 + vd**2)
+
+        #print(xv, yv)
+        #print(hd, vd)
+        #print(p)
+        #print(m)
+
+        if hd == 0:
+            print('!!! hd = 0')
+            exit()
+        if vd == 0:
+            print('!!! vd = 0')
+            exit()
+
+        # move information of current grid cell to second rows of x, y and m arrays
+        x[1], y[1], m[1, :] = x[i], y[i], m[i, :]
+
+        # define the next (=new) grid cell based on whether lv or lh is smaller
+        # information on current (=old) grid cell gets overwritten in x[0], y[0] but is still stored in x[1], y[1]
+        if lh < lv:
+            p = [p[0] + hd, p[1] + yih]
+            x[0], y[0] = x[i] + int(np.round(np.abs(hd)/hd)), y[i]
+        else:
+            #print('lh > lv')
+            p = [p[0] + xiv, p[1] + vd]
+            #print(p)
+            x[0], y[0] = x[i], y[i] - int(np.round(np.abs(vd)/vd))
+
+        # calculate current length of flowline and velocity
+        if lh < lv:
+            l = lh
+        else:
+            l = lv
+        v = np.sqrt(xv**2 + yv**2)
+
+        # append information on current (=old) point to flowline
+        flowline.append([fl_id, len(flowline), p[0], p[1], dem[y[1], x[1]], v, l])
+        #flowline = pd.concat([pd.DataFrame([[fl_id, p[0], p[1], dem[y[1], x[1]], v, l]],
+        #                                   columns=flowline.columns), flowline], ignore_index=True)
+
+        #print(p)
+        #print(dem[y[0], x[0]])
+        #print(x[0], y[0])
+        #print('')
+
+        # *** Conflict solving ****
+        # check whether there is a conflict that needs to be solved
+        # in the next step (computation of next flowline segment)
+        if np.isfinite(x[0]) and np.isfinite(x[1]):  # skip checking during initial iteration
+            if lh < lv:
+                if np.sign(xva[y[0], x[0]]) == np.sign(xva[y[1], x[1]]):
+                    conflict[0] = False
+                    conflict[1] = 0
+                else:
+                    conflict[0] = True
+                    conflict[1] += 1
+                    #print('conflict lh < lv! occurrence: %s' %conflict[1])
+            else:
+                if np.sign(yva[y[0], x[0]]) == np.sign(yva[y[1], x[1]]):
+                    conflict[0] = False
+                    conflict[1] = 0
+                else:
+                    conflict[0] = True
+                    conflict[1] += 1
+                    #print('conflict lh > lv! occurrence: %s' % conflict[1])
+
+        #print('------------')
+        # check whether conditions are given to proceed to the calculation of the next segment
+        # or if flowline needs to be ended
+        if 0 <= x[0] < dem.shape[1] and 0 <= y[0] < dem.shape[0]:
+            if np.isfinite(dem[y[0], x[0]]):
+                # calculate local flowspeed
+                v = np.sqrt(xva[y[0], x[0]]**2 + yva[y[0], x[0]]**2)
+                if v > vmin:
+                    c = True
+                else:
+                    c = False
+                    #print('v < vmin: flowline ended')
+            else:
+                c = False
+                #print('reached ice sheet margin: flowline ended')
+        else:
+            c = False
+            #print('ran out of domain: flowline ended')
+
+        if conflict[1] > max_conflict:
+            c = False
+            #print('too many consecutive conflicts, something wrong with flowfield, ending flowline.')
+
+    #print('number of points in flowline: ', len(flowline))
+    df_fl = pd.concat([pd.DataFrame(np.asarray(flowline), columns=df_fl.columns), df_fl], ignore_index=True)
+    #print('-----------')
+
+# ------------------------------------------- create the polygons -------------------------------------------
+# convert to LineString
+flid = np.unique(df_fl['ID'])
+# prepare GeoDataFrame to store final polygons
+final_gdf = gpd.GeoDataFrame()
+final_gdf['geometry'] = None
+# Set the GeoDataFrame's coordinate system according to the DEM
+final_gdf.crs = CRS
+
+for f in flid:
+    flt = df_fl.loc[df_fl['ID'] == f]
+    geo = [xy for xy in zip(flt.X, flt.Y)]
+    s = LineString(geo)
+    final = s.buffer(buff, join_style=2)
+    final_gdf.loc[f, 'geometry'] = final
+
+# write output
+final_gdf.to_file(outfolder + 'testpoly3.shp')
+
+
+# ------------------------------------------- create map with the flowlines -------------------------------------------
+
+# text formatting
+if plt.rcParams["text.usetex"]:
+    fmt = r'%.0f'
+else:
+    fmt = '%.0f'
+
+# calculate spacing of contour lines
+rel = np.isfinite(dem)
+interval = (np.floor((np.max(dem[rel]) - np.min(dem[rel])) / 800) + 1) * 100
+if interval > 200:
+    interval = 200
+levels = np.arange(np.ceil(np.min(dem[rel]) / interval) * interval,
+                   np.ceil(np.max(dem[rel]) / interval) * interval, interval)
+
+# calculate the bounding box
+bbox = ((np.min(x_coords), np.max(x_coords), np.min(y_coords), np.max(y_coords)))
+
+# set the range of velocity values
+norm = plt.Normalize(df_fl['v'].min(), df_fl['v'].max())
+
+# create the map
+fig, ax = plt.subplots(figsize=(9, 12))   #
+ax.set_xlabel('easting (' + CRS + ')')
+ax.set_ylabel('northing (' + CRS + ')')
+plt.title('Flowlines Test')
+ax.set_xlim(bbox[0], bbox[1])
+ax.set_ylim(bbox[2], bbox[3])
+
+for f in flid:
+    flt = df_fl.loc[df_fl['ID'] == f]
+    points = np.array([flt['X'], flt['Y']]).T.reshape(-1, 1, 2)
+    segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+    # create the line collection
+    lc = LineCollection(segments, cmap='rainbow', norm=norm)
+    # Set the values used for colormapping
+    lc.set_array(flt['v'])
+    lc.set_linewidth(1.2)
+    line = ax.add_collection(lc)
+    #ax.plot(flt['X'], flt['Y'], zorder=5, alpha=0.6, c='tab:cyan')
+
+cs1 = ax.contour(dem[:, :], levels=levels, extent=bbox, origin='upper',
+                 zorder=2, colors='black', alpha=0.6)
+ax.clabel(cs1, cs1.levels, inline=True, fmt=fmt, fontsize=8)
+
+plt.gca().set_aspect('equal', adjustable='box')
+
+# create an axes on the right side of ax. The width of cax will be 5%
+# of ax and the padding between cax and ax will be fixed at 0.05 inch.
+divider = make_axes_locatable(ax)
+cax = divider.append_axes("right", size="3%", pad=0.05)
+fig.colorbar(line, cax=cax, label='velocity (m yr$^{-1}$)')
+
+plt.tight_layout()
+#plt.show()
+plt.savefig(outfolder + 'flowlines_testplot.png')
+plt.close()
+
+
+
+
+
+
+
+
+
+
+
