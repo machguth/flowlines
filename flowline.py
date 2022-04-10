@@ -9,12 +9,14 @@ import numpy as np
 import pandas as pd
 import rasterio
 import platform
-import matplotlib.pyplot as plt
-from matplotlib.collections import LineCollection
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+#import matplotlib.pyplot as plt
+#from matplotlib.collections import LineCollection
+#from mpl_toolkits.axes_grid1 import make_axes_locatable
 import geopandas as gpd
-from shapely.geometry import Point, LineString, Polygon
+#from shapely.geometry import Point, LineString, Polygon
 from shapely.ops import unary_union
+
+import flowline_funcs as flf
 
 osys = platform.system()
 print('operating system is %s' %osys)
@@ -35,7 +37,7 @@ else:
 
 vmin = 5  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
 buff = 10000  # [m] buffer distance by which the flowlines get buffered
-seedtype = 'other' # if set to 'FromLine' then the seedpoints are calculated from seedfile, else along seedXcoord
+seedtype = 'other'  # if set to 'FromLine' then the seedpoints are calculated from seedfile, else along seedXcoord
 seedXcoord = -5000  # in coordinates of CRS
 seedspacing = 5000
 distance_delta = 15000  # distance of seedpoints located along seedfile polylines
@@ -172,19 +174,8 @@ for p in seedpoints:
             v = np.sqrt(xva[y[0], x[0]]**2 + yva[y[0], x[0]]**2)
             if v > vmin:
                 c = True
-    #         else:
-    #             print('flowline not started: too slow')
-    #     else:
-    #         print('flowline not startet: NaN (outside of ice sheet')
-    # else:
-    #     print('flowline not started: outside of domain')
 
     flowline.append([fl_id, 0, p[0], p[1], dem[y[0], x[0]], v, 0]) # information for initial point
-    #flowline = pd.concat([pd.DataFrame([[fl_id, p[0], p[1], dem[y[0], x[0]], v,  0]],
-    #                                   columns=flowline.columns), flowline], ignore_index=True)
-
-    #print(dem[y[0], x[0]], v)
-    #print('')
 
     # ****************** main loop ***********************
     while c:
@@ -243,11 +234,6 @@ for p in seedpoints:
             xiv = vd / s
             lv = np.sqrt(xiv**2 + vd**2)
 
-        #print(xv, yv)
-        #print(hd, vd)
-        #print(p)
-        #print(m)
-
         if hd == 0:
             print('!!! hd = 0')
             exit()
@@ -264,9 +250,7 @@ for p in seedpoints:
             p = [p[0] + hd, p[1] + yih]
             x[0], y[0] = x[i] + int(np.round(np.abs(hd)/hd)), y[i]
         else:
-            #print('lh > lv')
             p = [p[0] + xiv, p[1] + vd]
-            #print(p)
             x[0], y[0] = x[i], y[i] - int(np.round(np.abs(vd)/vd))
 
         # calculate current length of flowline and velocity
@@ -278,13 +262,6 @@ for p in seedpoints:
 
         # append information on current (=old) point to flowline
         flowline.append([fl_id, len(flowline), p[0], p[1], dem[y[1], x[1]], v, l])
-        #flowline = pd.concat([pd.DataFrame([[fl_id, p[0], p[1], dem[y[1], x[1]], v, l]],
-        #                                   columns=flowline.columns), flowline], ignore_index=True)
-
-        #print(p)
-        #print(dem[y[0], x[0]])
-        #print(x[0], y[0])
-        #print('')
 
         # *** Conflict solving ****
         # check whether there is a conflict that needs to be solved
@@ -297,7 +274,6 @@ for p in seedpoints:
                 else:
                     conflict[0] = True
                     conflict[1] += 1
-                    #print('conflict lh < lv! occurrence: %s' %conflict[1])
             else:
                 if np.sign(yva[y[0], x[0]]) == np.sign(yva[y[1], x[1]]):
                     conflict[0] = False
@@ -305,9 +281,7 @@ for p in seedpoints:
                 else:
                     conflict[0] = True
                     conflict[1] += 1
-                    #print('conflict lh > lv! occurrence: %s' % conflict[1])
 
-        #print('------------')
         # check whether conditions are given to proceed to the calculation of the next segment
         # or if flowline needs to be ended
         if 0 <= x[0] < dem.shape[1] and 0 <= y[0] < dem.shape[0]:
@@ -318,101 +292,101 @@ for p in seedpoints:
                     c = True
                 else:
                     c = False
-                    #print('v < vmin: flowline ended')
             else:
                 c = False
-                #print('reached ice sheet margin: flowline ended')
         else:
             c = False
-            #print('ran out of domain: flowline ended')
 
         if conflict[1] > max_conflict:
             c = False
-            #print('too many consecutive conflicts, something wrong with flowfield, ending flowline.')
 
-    #print('number of points in flowline: ', len(flowline))
     df_fl = pd.concat([pd.DataFrame(np.asarray(flowline), columns=df_fl.columns), df_fl], ignore_index=True)
-    #print('-----------')
 
-# ------------------------------------------- create the polygons -------------------------------------------
-# convert to LineString
-flid = np.unique(df_fl['ID'])
-# prepare GeoDataFrame to store final polygons
-final_gdf = gpd.GeoDataFrame()
-final_gdf['geometry'] = None
-# Set the GeoDataFrame's coordinate system according to the DEM
-final_gdf.crs = CRS
+# create the polygons
+flf.create_polygons(df_fl, CRS, buff, outfolder)
 
-for f in flid:
-    flt = df_fl.loc[df_fl['ID'] == f]
-    geo = [xy for xy in zip(flt.X, flt.Y)]
-    s = LineString(geo)
-    final = s.buffer(buff, join_style=2)
-    final_gdf.loc[f, 'geometry'] = final
+# create map with the flowlines
+flf.flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder)
 
-# write output
-final_gdf.to_file(outfolder + 'testpoly3.shp')
-
-
-# ------------------------------------------- create map with the flowlines -------------------------------------------
-
-# text formatting
-if plt.rcParams["text.usetex"]:
-    fmt = r'%.0f'
-else:
-    fmt = '%.0f'
-
-# calculate spacing of contour lines
-rel = np.isfinite(dem)
-interval = (np.floor((np.max(dem[rel]) - np.min(dem[rel])) / 800) + 1) * 100
-if interval > 200:
-    interval = 200
-levels = np.arange(np.ceil(np.min(dem[rel]) / interval) * interval,
-                   np.ceil(np.max(dem[rel]) / interval) * interval, interval)
-
-# calculate the bounding box
-bbox = ((np.min(x_coords), np.max(x_coords), np.min(y_coords), np.max(y_coords)))
-
-# set the range of velocity values
-norm = plt.Normalize(df_fl['v'].min(), df_fl['v'].max())
-
-# create the map
-fig, ax = plt.subplots(figsize=(9, 12))   #
-ax.set_xlabel('easting (' + CRS + ')')
-ax.set_ylabel('northing (' + CRS + ')')
-plt.title('Flowlines Test')
-ax.set_xlim(bbox[0], bbox[1])
-ax.set_ylim(bbox[2], bbox[3])
-
-for f in flid:
-    flt = df_fl.loc[df_fl['ID'] == f]
-    points = np.array([flt['X'], flt['Y']]).T.reshape(-1, 1, 2)
-    segments = np.concatenate([points[:-1], points[1:]], axis=1)
-
-    # create the line collection
-    lc = LineCollection(segments, cmap='rainbow', norm=norm)
-    # Set the values used for colormapping
-    lc.set_array(flt['v'])
-    lc.set_linewidth(1.2)
-    line = ax.add_collection(lc)
-    #ax.plot(flt['X'], flt['Y'], zorder=5, alpha=0.6, c='tab:cyan')
-
-cs1 = ax.contour(dem[:, :], levels=levels, extent=bbox, origin='upper',
-                 zorder=2, colors='black', alpha=0.6)
-ax.clabel(cs1, cs1.levels, inline=True, fmt=fmt, fontsize=8)
-
-plt.gca().set_aspect('equal', adjustable='box')
-
-# create an axes on the right side of ax. The width of cax will be 5%
-# of ax and the padding between cax and ax will be fixed at 0.05 inch.
-divider = make_axes_locatable(ax)
-cax = divider.append_axes("right", size="3%", pad=0.05)
-fig.colorbar(line, cax=cax, label='velocity (m yr$^{-1}$)')
-
-plt.tight_layout()
-#plt.show()
-plt.savefig(outfolder + 'flowlines_testplot.png')
-plt.close()
+# # ------------------------------------------- create the polygons -------------------------------------------
+# # convert to LineString
+# flid = np.unique(df_fl['ID'])
+# # prepare GeoDataFrame to store final polygons
+# final_gdf = gpd.GeoDataFrame()
+# final_gdf['geometry'] = None
+# # Set the GeoDataFrame's coordinate system according to the DEM
+# final_gdf.crs = CRS
+#
+# for f in flid:
+#     flt = df_fl.loc[df_fl['ID'] == f]
+#     geo = [xy for xy in zip(flt.X, flt.Y)]
+#     s = LineString(geo)
+#     final = s.buffer(buff, join_style=2)
+#     final_gdf.loc[f, 'geometry'] = final
+#
+# # write output
+# final_gdf.to_file(outfolder + 'testpoly3.shp')
+#
+#
+# # ------------------------------------------- create map with the flowlines -------------------------------------------
+#
+# # text formatting
+# if plt.rcParams["text.usetex"]:
+#     fmt = r'%.0f'
+# else:
+#     fmt = '%.0f'
+#
+# # calculate spacing of contour lines
+# rel = np.isfinite(dem)
+# interval = (np.floor((np.max(dem[rel]) - np.min(dem[rel])) / 800) + 1) * 100
+# if interval > 200:
+#     interval = 200
+# levels = np.arange(np.ceil(np.min(dem[rel]) / interval) * interval,
+#                    np.ceil(np.max(dem[rel]) / interval) * interval, interval)
+#
+# # calculate the bounding box
+# bbox = ((np.min(x_coords), np.max(x_coords), np.min(y_coords), np.max(y_coords)))
+#
+# # set the range of velocity values
+# norm = plt.Normalize(df_fl['v'].min(), df_fl['v'].max())
+#
+# # create the map
+# fig, ax = plt.subplots(figsize=(9, 12))   #
+# ax.set_xlabel('easting (' + CRS + ')')
+# ax.set_ylabel('northing (' + CRS + ')')
+# plt.title('Flowlines Test')
+# ax.set_xlim(bbox[0], bbox[1])
+# ax.set_ylim(bbox[2], bbox[3])
+#
+# for f in flid:
+#     flt = df_fl.loc[df_fl['ID'] == f]
+#     points = np.array([flt['X'], flt['Y']]).T.reshape(-1, 1, 2)
+#     segments = np.concatenate([points[:-1], points[1:]], axis=1)
+#
+#     # create the line collection
+#     lc = LineCollection(segments, cmap='rainbow', norm=norm)
+#     # Set the values used for colormapping
+#     lc.set_array(flt['v'])
+#     lc.set_linewidth(1.2)
+#     line = ax.add_collection(lc)
+#     #ax.plot(flt['X'], flt['Y'], zorder=5, alpha=0.6, c='tab:cyan')
+#
+# cs1 = ax.contour(dem[:, :], levels=levels, extent=bbox, origin='upper',
+#                  zorder=2, colors='black', alpha=0.6)
+# ax.clabel(cs1, cs1.levels, inline=True, fmt=fmt, fontsize=8)
+#
+# plt.gca().set_aspect('equal', adjustable='box')
+#
+# # create an axes on the right side of ax. The width of cax will be 5%
+# # of ax and the padding between cax and ax will be fixed at 0.05 inch.
+# divider = make_axes_locatable(ax)
+# cax = divider.append_axes("right", size="3%", pad=0.05)
+# fig.colorbar(line, cax=cax, label='velocity (m yr$^{-1}$)')
+#
+# plt.tight_layout()
+# #plt.show()
+# plt.savefig(outfolder + 'flowlines_testplot.png')
+# plt.close()
 
 
 
