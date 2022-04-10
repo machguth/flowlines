@@ -92,7 +92,7 @@ def flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder):  # create ma
     fig.colorbar(line, cax=cax, label='velocity (m yr$^{-1}$)')
 
     plt.tight_layout()
-    plt.savefig(outfolder + 'flowlines_testplot.png')
+    plt.savefig(outfolder + 'flowlines_plot.png')
     plt.close()
 
 
