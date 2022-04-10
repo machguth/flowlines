@@ -20,13 +20,13 @@ if osys != 'Windows':
     infolder = '/home/horstm/erc/vel_greenland_crop/'
     outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
-    # infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
-    # infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
-    # demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
-    infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
-    infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
-    demmask = r'N:/MODIS/ArcticDEM_500m/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr.tif'
-    seedfile = r'N:/MODIS/gis/seedpoints15000test.shp'  # needs to be a point shapefile
+    infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
+    infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
+    demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
+    # infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
+    # infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
+    # demmask = r'N:/MODIS/ArcticDEM_500m/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr.tif'
+    #seedfile = r'N:/MODIS/gis/seedpoints_v1.shp'  # needs to be a point shapefile
 
     outfolder = r'N:/MODIS/polygons/'
 
@@ -36,32 +36,14 @@ flminlength = 30 # minimum required points in a flowline
 
 # whenever a seedfile is specified, seedpoints are read from the seedfile
 # if seedfile is not specified, then seed points get created along a vertical line as defined below
-seedXcoord = -5000  # in coordinates of CRS
-seedspacing = 5000
+seedXcoord = -5050  # in coordinates of CRS
+seedspacing = 15000
 
 # -------------------------------------------------------------------------------------------------
 # check if output folder exists, if no create
 isdir = os.path.isdir(outfolder)
 if not isdir:
     os.mkdir(outfolder)
-
-# ------------------------seed points: read from seed file or create ------------------------------------------
-if 'seedfile' in locals():
-    seed = gpd.read_file(seedfile)
-    # create the seedpoints
-    seedpoints = []
-    for index, row in seed.iterrows():
-        seedpoints.extend(np.asarray(seed['geometry'].iloc[index]).tolist())
-
-    # append the future flowline IDs
-    for ni, i in enumerate(seedpoints):
-        i.append(ni)
-
-else:  # do not create seedpoints from seedfile but create points along a vertical line
-    ycoords = np.arange(-2740000, -2320000, seedspacing)
-    seedpoints = []
-    for ni, i in enumerate(ycoords):
-        seedpoints.append([seedXcoord, i, ni])
 
 # ------------------------------------ analyse/preparing the DEM data -----------------------------------------
 demDR = rasterio.open(demmask)  # read the ice sheet dem and create mask
@@ -81,11 +63,31 @@ dem = np.where(dem == demDR.nodatavals, np.NaN, dem)
 
 cs = (demDR.get_transform())[1]
 
-# read x and y velocity values
+# ------------------------ seed points: read from seed file or create ------------------------------------------
+if 'seedfile' in locals():
+    seed = gpd.read_file(seedfile)
+    # create the seedpoints
+    seedpoints = []
+    for index, row in seed.iterrows():
+        seedpoints.extend(np.asarray(seed['geometry'].iloc[index]).tolist())
+
+    # append the future flowline IDs
+    for ni, i in enumerate(seedpoints):
+        i.append(ni)
+
+else:  # do not create seedpoints from seedfile but create points along a vertical line
+    ycoords = np.arange(coord_mm[2]+buff+1, coord_mm[3]-buff-1, seedspacing)
+    seedpoints = []
+    for ni, i in enumerate(ycoords):
+        seedpoints.append([seedXcoord, i, ni])
+
+# ------------------------------ read x and y velocity values -----------------------------------
 xvaDR = rasterio.open(infilex)
 yvaDR = rasterio.open(infiley)
 xva = xvaDR.read(1)
 yva = yvaDR.read(1)
+xva = np.where(xva == xvaDR.nodatavals, np.NaN, xva)  # replace noData value with np.nan
+yva = np.where(yva == yvaDR.nodatavals, np.NaN, yva)  # replace noData value with np.nan
 
 if (xvaDR.get_transform())[0] != (demDR.get_transform())[0] or \
         (xvaDR.get_transform())[3] != (demDR.get_transform())[3]:
@@ -282,7 +284,7 @@ for p in seedpoints:
 
     df_fl = pd.concat([pd.DataFrame(np.asarray(flowline), columns=df_fl.columns), df_fl], ignore_index=True)
 
-# create the polygons
+# create the polygons but also write the flowlines to output
 flf.create_polygons(df_fl, CRS, buff, outfolder, flminlength)
 
 # create map with the flowlines

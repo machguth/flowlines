@@ -20,12 +20,12 @@ osys = platform.system()
 print('operating system is %s' %osys)
 
 if osys != 'Windows':
-    infolder = '/home/horstm/erc/vel_greenland_crop/'
+    seedfile = '/home/horstm/erc/vel_greenland_crop/something.shp'
     outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
-    demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
-    seedfile = r'N:/MODIS/gis/Greenland2400mContours.shp'  # needs to be a line shapefile, can contain many lines
-    outfolder = r'N:/MODIS/gis/'
+    #seedfile = r'N:/MODIS/gis/Greenland2400mContours.shp'  # needs to be a line shapefile, can contain many lines
+    seedfile = r'N:/MODIS/polygons/seedlines_v1.shp'
+    outfolder = r'N:/MODIS/polygons/'
 
 distance_delta = 15000  # distance of seedpoints located along seedfile polylines
 
@@ -40,7 +40,7 @@ cont = gpd.read_file(seedfile)
 #cont_sel = cont.loc[cont['ELEV'] == 2400]  # select contour linesyb elevation. Given contourline needs to exist.
 cont['length'] = cont['geometry'].length  # determine length of the contour lines
 seedlines = cont.loc[cont['length'] > 21000]  # remove very short contour lines
-seedlines['geometry'] = seedlines['geometry'].simplify(10000)  # vers strongly simplyfy the lines
+seedlines['geometry'] = seedlines['geometry'].simplify(1000)  # simplyfy the lines
 
 # create the seedpoints
 gdf_out = gpd.GeoDataFrame()
@@ -55,7 +55,7 @@ for index, row in seedlines.iterrows():
     gdf_out.loc[index, 'geometry'] = multipoint
 
 # write output
-gdf_out.to_file(outfolder + 'seedpoints5000.shp')
+gdf_out.to_file(outfolder + 'seedpoints_v1.shp')
 
 
 

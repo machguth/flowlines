@@ -22,10 +22,13 @@ def create_polygons(df_fl, CRS, buff, outfolder, flminlength):  # create the pol
     # convert to LineString
     flid = np.unique(df_fl['ID'])
     # prepare GeoDataFrame to store final polygons
-    final_gdf = gpd.GeoDataFrame()
-    final_gdf['geometry'] = None
-    # Set the GeoDataFrame's coordinate system according to the DEM
-    final_gdf.crs = CRS
+    gdf_poly = gpd.GeoDataFrame()
+    gdf_fl = gpd.GeoDataFrame()
+    gdf_poly['geometry'] = None
+    gdf_fl['geometry'] = None
+    # Set the GeoDataFrames' coordinate system according to the DEM
+    gdf_poly.crs = CRS
+    gdf_fl.crs = CRS
 
     for f in flid:
         flt = df_fl.loc[df_fl['ID'] == f]
@@ -33,10 +36,12 @@ def create_polygons(df_fl, CRS, buff, outfolder, flminlength):  # create the pol
         if len(geo) > flminlength:  # minimum lentgh of a flowline
             s = LineString(geo)
             final = s.buffer(buff, join_style=2)
-            final_gdf.loc[f, 'geometry'] = final
+            gdf_poly.loc[f, 'geometry'] = final
+            gdf_fl.loc[f, 'geometry'] = s
 
     # write output
-    final_gdf.to_file(outfolder + 'testpoly3.shp')
+    gdf_poly.to_file(outfolder + 'Ys_polygons_test.shp')
+    gdf_fl.to_file(outfolder + 'flowlines_test.shp')
 
 
 # #####################################################################################################################
@@ -100,7 +105,7 @@ def flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder):  # create ma
     fig.colorbar(line, cax=cax, label='velocity (m yr$^{-1}$)')
 
     plt.tight_layout()
-    plt.savefig(outfolder + 'flowlines_plot.png')
+    plt.savefig(outfolder + 'flowlines_test.png')
     plt.close()
 
 
