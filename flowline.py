@@ -20,13 +20,13 @@ if osys != 'Windows':
     infolder = '/home/horstm/erc/vel_greenland_crop/'
     outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
-    infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
-    infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
-    demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
-    # infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
-    # infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
-    # demmask = r'N:/MODIS/ArcticDEM_500m/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr.tif'
-    #seedfile = r'N:/MODIS/gis/seedpoints_v1.shp'  # needs to be a point shapefile
+    # infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
+    # infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
+    # demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
+    infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
+    infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
+    demmask = r'N:/MODIS/ArcticDEM_500m/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr.tif'
+    seedfile = r'N:/MODIS/polygons/seedpoints_v2.shp'  # needs to be a point shapefile
 
     outfolder = r'N:/MODIS/polygons/'
 

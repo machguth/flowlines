@@ -24,7 +24,7 @@ if osys != 'Windows':
     outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
     #seedfile = r'N:/MODIS/gis/Greenland2400mContours.shp'  # needs to be a line shapefile, can contain many lines
-    seedfile = r'N:/MODIS/polygons/seedlines_v1.shp'
+    seedfile = r'N:/MODIS/polygons/seedline_v2.shp'
     outfolder = r'N:/MODIS/polygons/'
 
 distance_delta = 15000  # distance of seedpoints located along seedfile polylines
@@ -55,7 +55,7 @@ for index, row in seedlines.iterrows():
     gdf_out.loc[index, 'geometry'] = multipoint
 
 # write output
-gdf_out.to_file(outfolder + 'seedpoints_v1.shp')
+gdf_out.to_file(outfolder + 'seedpoints_v2.shp')
 
 
 
