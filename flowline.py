@@ -26,7 +26,7 @@ else:
     infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
     infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
     demmask = r'N:/MODIS/ArcticDEM_500m/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr.tif'
-    seedfile = r'N:/MODIS/polygons/seedpoints_v2.shp'  # needs to be a point shapefile
+    seedfile = r'N:/MODIS/polygons/seedpoints_v3.shp'  # needs to be a point shapefile
 
     outfolder = r'N:/MODIS/polygons/'
 
@@ -65,21 +65,12 @@ cs = (demDR.get_transform())[1]
 
 # ------------------------ seed points: read from seed file or create ------------------------------------------
 if 'seedfile' in locals():
-    seed = gpd.read_file(seedfile)
-    # create the seedpoints
-    seedpoints = []
-    for index, row in seed.iterrows():
-        seedpoints.extend(np.asarray(seed['geometry'].iloc[index]).tolist())
-
-    # append the future flowline IDs
-    for ni, i in enumerate(seedpoints):
-        i.append(ni)
+    seedpoints = gpd.read_file(seedfile)
 
 else:  # do not create seedpoints from seedfile but create points along a vertical line
     ycoords = np.arange(coord_mm[2]+buff+1, coord_mm[3]-buff-1, seedspacing)
-    seedpoints = []
-    for ni, i in enumerate(ycoords):
-        seedpoints.append([seedXcoord, i, ni])
+    seedpoints = gpd.GeoDataFrame({'id': np.arange(0, len(ycoords))},
+                                  geometry=gpd.points_from_xy([seedXcoord] * len(ycoords),ycoords))
 
 # ------------------------------ read x and y velocity values -----------------------------------
 xvaDR = rasterio.open(infilex)
@@ -107,11 +98,14 @@ df_fl = pd.DataFrame(columns=['ID', 'n', 'X', 'Y', 'Z', 'v', 'd'])
 
 # ***************************************** calculate the flowlines *******************************************
 
-for p in seedpoints:
+#for p in seedpoints:
+for index, row in seedpoints.iterrows():
 
-    print('starting with seedpoint: ', p)
+    print('starting with seedpoint: ', index)
 
-    fl_id = p[2]  # get ID of the flowline
+    p = (row.geometry.x, row.geometry.y)  # create x/y tuple. a bit complicated but for compatibility to code below
+
+    fl_id = index  # get ID of the flowline
 
     # ----------------------------- preparations --------------------------
     # initialize flowline and starting point

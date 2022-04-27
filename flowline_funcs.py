@@ -40,8 +40,8 @@ def create_polygons(df_fl, CRS, buff, outfolder, flminlength):  # create the pol
             gdf_fl.loc[f, 'geometry'] = s
 
     # write output
-    gdf_poly.to_file(outfolder + 'Ys_polygons_v2.shp')
-    gdf_fl.to_file(outfolder + 'flowlines_v2.shp')
+    gdf_poly.to_file(outfolder + 'Ys_polygons_v3.shp')
+    gdf_fl.to_file(outfolder + 'flowlines_v3.shp')
 
 
 # #####################################################################################################################
@@ -88,7 +88,7 @@ def flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder):  # create ma
         # create the line collection
         lc = LineCollection(segments, cmap='rainbow', norm=norm)
         # Set the values used for color mapping
-        lc.set_array(flt['v'])
+        lc.set_array(flt['v'].astype(float))
         lc.set_linewidth(1.2)
         line = ax.add_collection(lc)
 
@@ -105,7 +105,7 @@ def flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder):  # create ma
     fig.colorbar(line, cax=cax, label='velocity (m yr$^{-1}$)')
 
     plt.tight_layout()
-    plt.savefig(outfolder + 'flowlines_test.png')
+    plt.savefig(outfolder + 'flowlines_test_kanger.png')
     plt.close()
 
 

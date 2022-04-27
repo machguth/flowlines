@@ -48,14 +48,19 @@ gdf_out['geometry'] = None
 # Set the GeoDataFrame's coordinate system according to input
 gdf_out.crs = cont.crs
 
+store_ids = []
+store_points = []
+id_counter = 0
 for index, row in seedlines.iterrows():
     distances = np.arange(0, row['geometry'].length, distance_delta)
     points = [row['geometry'].interpolate(distance) for distance in distances] + [row['geometry'].boundary[1]]
-    multipoint = unary_union(points)  # or new_line = LineString(points)
-    gdf_out.loc[index, 'geometry'] = multipoint
+    points_id = np.arange(id_counter, len(points))
+    store_ids.extend(points_id)
+    store_points.extend(points)
+    id_counter += len(points)
 
-# write output
-gdf_out.to_file(outfolder + 'seedpoints_v2.shp')
+gdf_new = gpd.GeoDataFrame({'id': store_ids}, geometry=store_points, crs=cont.crs)
+gdf_new.to_file(outfolder + 'seedpoints_v3.shp')
 
 
 
