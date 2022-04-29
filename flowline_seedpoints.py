@@ -61,6 +61,3 @@ for index, row in seedlines.iterrows():
 
 gdf_new = gpd.GeoDataFrame({'id': store_ids}, geometry=store_points, crs=cont.crs)
 gdf_new.to_file(outfolder + 'seedpoints_v3.shp')
-
-
-
