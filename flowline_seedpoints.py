@@ -21,19 +21,19 @@ print('operating system is %s' %osys)
 
 if osys != 'Windows':
     seedfile = '/home/horstm/erc/vel_greenland_crop/something.shp'
-    outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
+    outfile = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
     #seedfile = r'N:/MODIS/gis/Greenland2400mContours.shp'  # needs to be a line shapefile, can contain many lines
     seedfile = r'N:/MODIS/polygons/seedline_v2.shp'
-    outfolder = r'N:/MODIS/polygons/'
+    outfile = r'N:/MODIS/polygons/seedpoints_v3.1.shp'  # should be .shp
 
-distance_delta = 15000  # distance of seedpoints located along seedfile polylines
+distance_delta = 45000  # distance of seedpoints located along seedfile polylines
 
 # -------------------------------------------------------------------------------------------------
 # check if output folder exists, if no create
-isdir = os.path.isdir(outfolder)
-if not isdir:
-    os.mkdir(outfolder)
+# isdir = os.path.isdir(outfolder)
+# if not isdir:
+#     os.mkdir(outfolder)
 
 # ------------------------------------ read seedfile data ------------------------------------------
 cont = gpd.read_file(seedfile)
@@ -60,4 +60,4 @@ for index, row in seedlines.iterrows():
     id_counter += len(points)
 
 gdf_new = gpd.GeoDataFrame({'id': store_ids}, geometry=store_points, crs=cont.crs)
-gdf_new.to_file(outfolder + 'seedpoints_v3.shp')
+gdf_new.to_file(outfile)

@@ -26,9 +26,11 @@ else:
     infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
     infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
     demmask = r'N:/MODIS/ArcticDEM_500m/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr.tif'
-    seedfile = r'N:/MODIS/polygons/seedpoints_v3.shp'  # needs to be a point shapefile
+    seedfile = r'N:/MODIS/polygons/seedpoints_v3.1.shp'  # needs to be a point shapefile
 
     outfolder = r'N:/MODIS/polygons/'
+
+version = 'v3.1'  # Simple identifier, has no other function than being appended to the end of the filename
 
 vmin = 3  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
 buff = 10000  # [m] buffer distance by which the flowlines get buffered (to create polygons from the flow lines)
@@ -279,7 +281,7 @@ for index, row in seedpoints.iterrows():
     df_fl = pd.concat([pd.DataFrame(np.asarray(flowline), columns=df_fl.columns), df_fl], ignore_index=True)
 
 # create the polygons but also write the flowlines to output
-flf.create_polygons(df_fl, CRS, buff, outfolder, flminlength)
+flf.create_polygons(df_fl, CRS, buff, outfolder, version, flminlength)
 
 # create map with the flowlines
-flf.flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder)
+flf.flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder, version)

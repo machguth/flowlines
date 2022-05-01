@@ -13,7 +13,7 @@ from shapely.geometry import Point, LineString, Polygon
 
 
 # #####################################################################################################################
-def create_polygons(df_fl, CRS, buff, outfolder, flminlength):  # create the polygons
+def create_polygons(df_fl, CRS, buff, outfolder, version, flminlength):  # create the polygons
 
     # check minimum length is at least set to 2, otherwise LineString will issue errors
     if flminlength == 1:
@@ -40,12 +40,12 @@ def create_polygons(df_fl, CRS, buff, outfolder, flminlength):  # create the pol
             gdf_fl.loc[f, 'geometry'] = s
 
     # write output
-    gdf_poly.to_file(outfolder + 'Ys_polygons_v3.shp')
-    gdf_fl.to_file(outfolder + 'flowlines_v3.shp')
+    gdf_poly.to_file(outfolder + 'Ys_polygons_' + version + '.shp')
+    gdf_fl.to_file(outfolder + 'flowlines_' + version + '.shp')
 
 
 # #####################################################################################################################
-def flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder):  # create map with the flowlines
+def flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder, version):  # create map with the flowlines
 
     # text formatting
     if plt.rcParams["text.usetex"]:
@@ -105,7 +105,7 @@ def flowlines_plot(df_fl, dem, x_coords, y_coords, CRS, outfolder):  # create ma
     fig.colorbar(line, cax=cax, label='velocity (m yr$^{-1}$)')
 
     plt.tight_layout()
-    plt.savefig(outfolder + 'flowlines_test_kanger.png')
+    plt.savefig(outfolder + 'flowlines_' + version + '.png')
     plt.close()
 
 
