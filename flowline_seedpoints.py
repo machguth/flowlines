@@ -25,9 +25,9 @@ if osys != 'Windows':
 else:
     #seedfile = r'N:/MODIS/gis/Greenland2400mContours.shp'  # needs to be a line shapefile, can contain many lines
     seedfile = r'N:/MODIS/polygons/seedline_v2.shp'
-    outfile = r'N:/MODIS/polygons/seedpoints_v3.1.shp'  # should be .shp
+    outfile = r'N:/MODIS/polygons/seedpoints_v3.2.shp'  # should be .shp
 
-distance_delta = 45000  # distance of seedpoints located along seedfile polylines
+distance_delta = 25000  # distance of seedpoints located along seedfile polylines
 
 # -------------------------------------------------------------------------------------------------
 # check if output folder exists, if no create
