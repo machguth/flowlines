@@ -32,7 +32,7 @@ def create_polygons(df_fl, CRS, buff, outfolder, version, flminlength):  # creat
 
     for f in flid:
         flt = df_fl.loc[df_fl['ID'] == f]
-        geo = [xy for xy in zip(flt.X, flt.Y)]
+        geo = [xy for xy in zip(flt.X, flt.Y, flt.Z)]
         if len(geo) > flminlength:  # minimum lentgh of a flowline
             s = LineString(geo)
             final = s.buffer(buff, join_style=2)
