@@ -40,6 +40,7 @@ def create_polygons(df_fl, CRS, buff, outfolder, version, flminlength):  # creat
             gdf_fl.loc[f, 'geometry'] = s
 
     # write output
+    gdf_fl['ID'] = gdf_fl.index
     gdf_poly.to_file(outfolder + 'Ys_polygons_' + version + '.shp')
     gdf_fl.to_file(outfolder + 'flowlines_' + version + '.shp')
 

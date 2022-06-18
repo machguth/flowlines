@@ -30,7 +30,7 @@ else:
 
     outfolder = r'N:/MODIS/polygons/'
 
-version = 'v3.2'  # Simple identifier, has no other function than being appended to the end of the filename
+version = 'v3.2test'  # Simple identifier, has no other function than being appended to the end of the filename
 
 vmin = 3  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
 buff = 10000  # [m] buffer distance by which the flowlines get buffered (to create polygons from the flow lines)
