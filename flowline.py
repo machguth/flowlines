@@ -20,26 +20,27 @@ if osys != 'Windows':
     infolder = '/home/horstm/erc/vel_greenland_crop/'
     outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
-    # infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
-    # infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
-    # demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test.tif'
-    infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
-    infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
-    demmask = r'N:/MODIS/ArcticDEM_500m/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr.tif'
-    seedfile = r'N:/MODIS/polygons/seedpoints_v3.2.shp'  # needs to be a point shapefile
+    infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
+    infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
+    demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test_gapfilled.tif'
+    #infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
+    #infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
+    #demmask = r'N:/MODIS/mask_greenland_icesheet/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr_GapFilled.tif'
+    #seedfile = r'N:/MODIS/polygons/seedpoints_v3.4.shp'  # needs to be a point shapefile
 
     outfolder = r'N:/MODIS/polygons/'
 
-version = 'v3.2test'  # Simple identifier, has no other function than being appended to the end of the filename
+#version = '_v3.4'  # Simple identifier, has no other function than being appended to the end of the filename
+version = '_test_W20km' # Simple identifier, has no other function than being appended to the end of the filename
 
-vmin = 3  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
+vmin = 1.5  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
 buff = 10000  # [m] buffer distance by which the flowlines get buffered (to create polygons from the flow lines)
 flminlength = 30 # minimum required points in a flowline
 
 # whenever a seedfile is specified, seedpoints are read from the seedfile
 # if seedfile is not specified, then seed points get created along a vertical line as defined below
 seedXcoord = -5050  # in coordinates of CRS
-seedspacing = 15000
+seedspacing = 20000
 
 # -------------------------------------------------------------------------------------------------
 # check if output folder exists, if no create
@@ -70,7 +71,7 @@ if 'seedfile' in locals():
     seedpoints = gpd.read_file(seedfile)
 
 else:  # do not create seedpoints from seedfile but create points along a vertical line
-    ycoords = np.arange(coord_mm[2]+buff+1, coord_mm[3]-buff-1, seedspacing)
+    ycoords = np.arange(coord_mm[2] + seedspacing / 2 + 1, coord_mm[3] - seedspacing / 2 - 1, seedspacing)
     seedpoints = gpd.GeoDataFrame({'id': np.arange(0, len(ycoords))},
                                   geometry=gpd.points_from_xy([seedXcoord] * len(ycoords),ycoords))
 

@@ -24,10 +24,10 @@ if osys != 'Windows':
     outfile = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
     #seedfile = r'N:/MODIS/gis/Greenland2400mContours.shp'  # needs to be a line shapefile, can contain many lines
-    seedfile = r'N:/MODIS/polygons/seedline_v2.shp'
-    outfile = r'N:/MODIS/polygons/seedpoints_v3.2.shp'  # should be .shp
+    seedfile = r'N:/MODIS/polygons/seedline_v2.1.shp'
+    outfile = r'N:/MODIS/polygons/seedpoints_v3.4.shp'  # should be .shp
 
-distance_delta = 25000  # distance of seedpoints located along seedfile polylines
+distance_delta = 15000  # distance of seedpoints located along seedfile polylines
 
 # -------------------------------------------------------------------------------------------------
 # check if output folder exists, if no create
