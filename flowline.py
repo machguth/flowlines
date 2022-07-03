@@ -31,16 +31,16 @@ else:
     outfolder = r'N:/MODIS/polygons/'
 
 #version = '_v3.4'  # Simple identifier, has no other function than being appended to the end of the filename
-version = '_test_W20km' # Simple identifier, has no other function than being appended to the end of the filename
+version = '_test_W10km_dense' # Simple identifier, has no other function than being appended to the end of the filename
 
 vmin = 1.5  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
-buff = 10000  # [m] buffer distance by which the flowlines get buffered (to create polygons from the flow lines)
+buff = 5000  # [m] buffer distance by which the flowlines get buffered (to create polygons from the flow lines)
 flminlength = 30 # minimum required points in a flowline
 
 # whenever a seedfile is specified, seedpoints are read from the seedfile
 # if seedfile is not specified, then seed points get created along a vertical line as defined below
 seedXcoord = -5050  # in coordinates of CRS
-seedspacing = 20000
+seedspacing = 10000
 
 # -------------------------------------------------------------------------------------------------
 # check if output folder exists, if no create
