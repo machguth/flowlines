@@ -20,21 +20,21 @@ if osys != 'Windows':
     infolder = '/home/horstm/erc/vel_greenland_crop/'
     outfolder = '/home/horstm/erc/vel_greenland_crop_processed/'
 else:
-    infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
-    infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
-    demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test_gapfilled.tif'
-    #infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
-    #infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
-    #demmask = r'N:/MODIS/mask_greenland_icesheet/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr_GapFilled.tif'
-    #seedfile = r'N:/MODIS/polygons/seedpoints_v3.4.shp'  # needs to be a point shapefile
+    #infilex = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vx_v02-composite-crop.tif'
+    #infiley = r'N:/MODIS/vel_greenland_crop_processed_test2/greenland_vel_mosaic200_2015-2018_vy_v02-composite-crop.tif'
+    #demmask = r'N:/MODIS/mask_greenland_icesheet/dem_test_gapfilled.tif'
+    infilex = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vx_v02-composite-crop.tif'
+    infiley = r'N:/MODIS/vel_greenland_500m/greenland_vel_mosaic500_2015-2018_vy_v02-composite-crop.tif'
+    demmask = r'N:/MODIS/mask_greenland_icesheet/arcticdem_mosaic_500m_v30_greenland_icesheet_geoidCorr_GapFilled.tif'
+    seedfile = r'N:/MODIS/polygons/seedpoints_v3.2.shp'  # needs to be a point shapefile
 
     outfolder = r'N:/MODIS/polygons/'
 
-#version = '_v3.4'  # Simple identifier, has no other function than being appended to the end of the filename
-version = '_test_W10km_dense' # Simple identifier, has no other function than being appended to the end of the filename
+version = '_v3.2b'  # Simple identifier, has no other function than being appended to the end of the filename
+#version = '_test_W10km_dense' # Simple identifier, has no other function than being appended to the end of the filename
 
 vmin = 1.5  # [m yr-1] minimum flow speed. Flowlines are ended when they reach areas of v < vmin
-buff = 5000  # [m] buffer distance by which the flowlines get buffered (to create polygons from the flow lines)
+buff = 10000  # [m] buffer distance by which the flowlines get buffered (to create polygons from the flow lines)
 flminlength = 30 # minimum required points in a flowline
 
 # whenever a seedfile is specified, seedpoints are read from the seedfile
@@ -263,7 +263,8 @@ for index, row in seedpoints.iterrows():
 
         # check whether conditions are given to proceed to the calculation of the next segment
         # or if flowline needs to be ended
-        if 0 <= x[0] < dem.shape[1] and 0 <= y[0] < dem.shape[0]:
+        # first test whether flowline gets close to DEM boundaries (using a safety buffer of 1 in all direction)
+        if 1 <= x[0] < (dem.shape[1]-1) and 1 <= y[0] < (dem.shape[0]-1):
             if np.isfinite(dem[y[0], x[0]]):
                 # calculate local flowspeed
                 v = np.sqrt(xva[y[0], x[0]]**2 + yva[y[0], x[0]]**2)
