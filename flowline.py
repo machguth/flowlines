@@ -92,7 +92,7 @@ if (xvaDR.get_transform())[0] != (demDR.get_transform())[0] or \
     print('demDR.get_transform():', demDR.get_transform())
     quit()
 
-# mask veloctiy fields to ice sheet extent
+# mask velocity fields to ice sheet extent
 xva = np.where(np.isnan(dem), np.NaN, xva)
 yva = np.where(np.isnan(dem), np.NaN, yva)
 
